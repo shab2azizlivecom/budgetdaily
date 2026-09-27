@@ -1,0 +1,103 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all unknown collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User Profile validation
+    function isValidUserProfile(data) {
+      return data.keys().hasAll(['uid', 'email'])
+        && data.keys().hasOnly(['uid', 'email', 'displayName', 'photoURL', 'createdAt'])
+        && data.uid is string && data.uid == request.auth.uid
+        && data.email is string && data.email.size() <= 150
+        && (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100))
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500))
+        && (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 50));
+    }
+
+    // User Settings validation
+    function isValidUserSettings(data) {
+      return data.keys().hasAll(['userId', 'startingBalance', 'currencySymbol', 'currencyCode', 'dailyBudgetLimit'])
+        && data.keys().hasOnly(['userId', 'startingBalance', 'currencySymbol', 'currencyCode', 'dailyBudgetLimit', 'updatedAt'])
+        && data.userId is string && data.userId == request.auth.uid
+        && (data.startingBalance is number || data.startingBalance is int)
+        && data.currencySymbol is string && data.currencySymbol.size() <= 10
+        && data.currencyCode is string && data.currencyCode.size() <= 10
+        && (data.dailyBudgetLimit is number || data.dailyBudgetLimit is int) && data.dailyBudgetLimit >= 0
+        && (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 50));
+    }
+
+    // Budget Transaction validation
+    function isValidTransaction(data) {
+      return data.keys().hasAll(['id', 'sno', 'date', 'title', 'category', 'type', 'amount', 'userId'])
+        && data.keys().hasOnly(['id', 'sno', 'date', 'time', 'title', 'category', 'type', 'amount', 'notes', 'userId', 'createdAt'])
+        && data.id is string && data.id.size() <= 128
+        && (data.sno is number || data.sno is int) && data.sno > 0
+        && data.date is string && data.date.size() == 10 && data.date.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && (!('time' in data) || (data.time is string && data.time.size() <= 10))
+        && data.title is string && data.title.size() > 0 && data.title.size() <= 200
+        && data.category is string && data.category.size() > 0 && data.category.size() <= 60
+        && data.type is string && (data.type == 'add' || data.type == 'minus')
+        && (data.amount is number || data.amount is int) && data.amount > 0
+        && (!('notes' in data) || (data.notes is string && data.notes.size() <= 500))
+        && data.userId is string && data.userId == request.auth.uid
+        && (!('createdAt' in data) || (data.createdAt is number || data.createdAt is int));
+    }
+
+    // Connection probe endpoint
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // User Root Document & Subcollections
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming());
+      allow update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid;
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // User Settings Subcollection
+      match /settings/{settingId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(settingId) && isValidUserSettings(incoming());
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(settingId) && isValidUserSettings(incoming())
+          && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(userId);
+      }
+
+      // Transactions Subcollection
+      match /transactions/{transactionId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(userId) && isValidId(transactionId) && isValidTransaction(incoming());
+        allow update: if isOwner(userId) && isValidId(userId) && isValidId(transactionId) && isValidTransaction(incoming())
+          && incoming().userId == existing().userId
+          && incoming().id == existing().id;
+        allow delete: if isOwner(userId) && isValidId(userId) && isValidId(transactionId);
+      }
+    }
+  }
+}

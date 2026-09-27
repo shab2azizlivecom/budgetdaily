@@ -1,0 +1,6 @@
+{
+  "name": "LedgerDay — Daily Budget & Running Balance Sheet",
+  "description": "Daily budget web app tracking Add, Minus, S.No, Date, and dynamic running balance with daily summaries and CSV export.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

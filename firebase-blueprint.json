@@ -1,0 +1,64 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile document",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The Firebase Auth user ID" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "displayName": { "type": "string", "maxLength": 100, "description": "Display name of user" },
+        "photoURL": { "type": "string", "maxLength": 500, "description": "Avatar photo URL" },
+        "createdAt": { "type": "string", "description": "Creation timestamp ISO string" }
+      },
+      "required": ["uid", "email"]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "User ledger budget preferences and configuration",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "startingBalance": { "type": "number", "description": "Opening balance" },
+        "currencySymbol": { "type": "string", "maxLength": 5, "description": "Currency symbol like $" },
+        "currencyCode": { "type": "string", "maxLength": 5, "description": "Currency code like USD" },
+        "dailyBudgetLimit": { "type": "number", "description": "Daily spending target limit" },
+        "updatedAt": { "type": "string", "description": "Last update ISO timestamp" }
+      },
+      "required": ["userId", "startingBalance", "currencySymbol", "currencyCode", "dailyBudgetLimit"]
+    },
+    "BudgetTransaction": {
+      "title": "BudgetTransaction",
+      "description": "A single daily budget entry (Add or Minus)",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128, "description": "Unique transaction ID" },
+        "sno": { "type": "number", "description": "Chronological serial number" },
+        "date": { "type": "string", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$", "description": "Date in YYYY-MM-DD" },
+        "time": { "type": "string", "maxLength": 8, "description": "Time in HH:mm" },
+        "title": { "type": "string", "maxLength": 200, "description": "Description of item" },
+        "category": { "type": "string", "maxLength": 60, "description": "Item category" },
+        "type": { "type": "string", "enum": ["add", "minus"], "description": "Inflow or outflow" },
+        "amount": { "type": "number", "description": "Monetary value" },
+        "notes": { "type": "string", "maxLength": 500, "description": "Optional notes or receipt details" },
+        "userId": { "type": "string", "description": "Owner user ID" },
+        "createdAt": { "type": "number", "description": "Client or server creation timestamp in ms" }
+      },
+      "required": ["id", "sno", "date", "title", "category", "type", "amount", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile information"
+    },
+    "/users/{userId}/settings/{settingId}": {
+      "schema": "UserSettings",
+      "description": "Budget preferences for the user"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "BudgetTransaction",
+      "description": "User daily budget transactions"
+    }
+  }
+}
